@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WireCode — Arduino Firmware-to-Wiring Puzzle Simulator</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- Top Header Navigation -->
+  <header>
+    <div>
+      <span class="brand-badge">INTERACTIVE EMBEDDED CIRCUIT SIMULATOR</span>
+      <h1>WireCode: Arduino Firmware-to-Wiring Studio</h1>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 3px;">
+        Pahami kodingan mikrokontroler, rangkai kabel pada pin fisik yang akurat, dan jalankan simulasi hardware nyata.
+      </p>
+    </div>
+
+    <!-- Mission Selector -->
+    <div class="mission-bar">
+      <span style="font-size: 0.82rem; color: #cbd5e1; font-weight: bold;">PILIH MISI:</span>
+      <select id="mission-select">
+        <option value="0">Misi 01: Beacon Alarm (LED & Button)</option>
+        <option value="1">Misi 02: Parking Radar (HC-SR04 Ultrasonic)</option>
+        <option value="2">Misi 03: Automatic Gate (SG90 Servo & PIR)</option>
+      </select>
+      <button id="btn-hint" style="padding: 6px 10px; font-size: 0.78rem;">💡 Hint Rangkaian</button>
+    </div>
+  </header>
+
+  <!-- Main Grid: Left Code/Diagnostics + Right Workbench -->
+  <div class="main-grid">
+
+    <!-- LEFT COLUMN: Firmware Editor & Hardware Diagnostics -->
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      
+      <!-- Mission Objectives Card -->
+      <div class="card" style="padding: 14px;">
+        <div class="card-title">
+          <span id="mission-title">Misi 01: Beacon Alarm (LED & Button)</span>
+          <span class="status-badge unverified" id="sim-status-badge">STATUS: CIRCUIT INCOMPLETE</span>
+        </div>
+        <p id="mission-summary" style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.4;">
+          Rangkai LED dengan resistor pembatas arus dan sebuah pushbutton dengan mode INPUT_PULLUP.
+        </p>
+      </div>
+
+      <!-- Code Editor Card -->
+      <div class="card">
+        <div class="card-title">
+          <span>Arduino IDE Code Editor</span>
+          <span style="font-size: 0.75rem; color: #64748b;">Dynamic #define & pinMode Parser</span>
+        </div>
+
+        <div class="editor-container">
+          <div class="line-numbers" id="line-numbers">1</div>
+          <textarea id="code-editor" spellcheck="false"></textarea>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: space-between; align-items: center; margin-top: 2px;">
+          <button class="btn-primary" id="btn-flash">
+            ⚡ Verify & Flash Firmware
+          </button>
+          <button id="btn-stop" style="font-size: 0.78rem;">
+            ⏹️ Stop
+          </button>
+        </div>
+      </div>
+
+      <!-- Hardware & Firmware Diagnostics Console -->
+      <div class="card">
+        <div class="card-title">
+          <span>Console & Hardware Diagnostics</span>
+          <span style="font-size: 0.75rem; color: #64748b;">Continuity & Short-Circuit Protection</span>
+        </div>
+        <div class="console-box" id="console-output"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: Interactive Circuit Workbench -->
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div class="card" style="flex: 1;">
+        <div class="card-title">
+          <span>2D Circuit Workbench (Arduino Uno R3)</span>
+          <div style="display: flex; gap: 8px;">
+            <button id="btn-clear-wires" class="btn-danger" style="padding: 4px 10px; font-size: 0.75rem;">
+              🗑️ Reset Kabel
+            </button>
+          </div>
+        </div>
+
+        <!-- Workbench SVG Canvas -->
+        <div class="workbench-wrap">
+          <div class="workbench-grid"></div>
+          <svg id="workbench-svg"></svg>
+        </div>
+
+        <!-- Status & Tooltip Banner -->
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; padding: 4px 6px; color: var(--text-muted);">
+          <span id="hover-info">Arahkan kursor atau klik pin emas untuk mulai merangkai kabel.</span>
+          <span style="font-size: 0.75rem; color: #64748b;">Klik kabel yang sudah terpasang untuk menghapusnya</span>
+        </div>
+
+        <!-- Interactive Simulation Controls Area -->
+        <div class="sim-controls-panel" id="sim-controls-area"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts in dependency order -->
+  <script src="js/hardware/boards.js"></script>
+  <script src="js/hardware/components.js"></script>
+  <script src="js/engine/circuit.js"></script>
+  <script src="js/engine/validator.js"></script>
+  <script src="js/engine/simulation.js"></script>
+  <script src="js/missions/missions.js"></script>
+  <script src="js/ui/workbench.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

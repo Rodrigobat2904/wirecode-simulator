@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WireCode — 2D High-Fidelity Electronics Component Showcase</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --workbench: #0f172a;
+      --border: #1e293b;
+      --accent: #38bdf8;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 20px; min-height: 100vh; display: flex; flex-direction: column; gap: 16px; user-select: none; }
+    
+    header {
+      background: #111827; border: 1px solid var(--border); border-radius: 12px; padding: 14px 22px;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+    }
+    .badge { background: #0369a1; color: #bae6fd; font-size: 0.75rem; font-weight: bold; padding: 4px 10px; border-radius: 9999px; }
+    h1 { font-size: 1.35rem; margin-top: 4px; color: #fff; }
+
+    /* Workbench Canvas Container */
+    .workbench-container {
+      position: relative; width: 100%; height: 600px; background: #0d1322;
+      border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+      box-shadow: inset 0 0 40px rgba(0,0,0,0.6);
+    }
+    
+    /* Grid background */
+    .workbench-grid {
+      position: absolute; width: 100%; height: 100%;
+      background-image: radial-gradient(#1e293b 1px, transparent 1px);
+      background-size: 20px 20px; pointer-events: none; opacity: 0.7;
+    }
+
+    svg#workbench-svg {
+      width: 100%; height: 100%; display: block;
+    }
+
+    /* Pin Hover Styles */
+    .pin-target {
+      cursor: pointer; transition: all 0.15s ease;
+    }
+    .pin-target:hover circle.pin-glow {
+      opacity: 0.6; r: 12;
+    }
+    .pin-target:hover circle.pin-core {
+      fill: #facc15 !important; stroke: #fff !important;
+    }
+
+    /* Floating Control Bar */
+    .action-bar {
+      position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+      background: rgba(17, 24, 39, 0.92); backdrop-filter: blur(8px);
+      border: 1px solid #334155; border-radius: 10px; padding: 10px 18px;
+      display: flex; gap: 14px; align-items: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+    button {
+      background: #1e293b; border: 1px solid #334155; color: #fff; padding: 8px 14px; border-radius: 6px;
+      font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 6px;
+    }
+    button:hover { background: #334155; border-color: var(--accent); }
+    button.btn-primary { background: #0284c7; border-color: #38bdf8; }
+    button.btn-primary:hover { background: #0369a1; }
+    
+    /* Interactive Instructions */
+    .tip-pill {
+      font-size: 0.8rem; color: #cbd5e1; background: #1e293b; padding: 6px 12px; border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div>
+      <span class="badge">PRECISION 2D VECTOR ELECTRONICS ASSETS</span>
+      <h1>WireCode Component Visualizer & Wire Physics Test</h1>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 3px;">
+        Pratinjau visual komponen Arduino Uno, HC-SR04, SG90 Servo, dan 5mm LED dengan interaksi kabel jumper Bézier.
+      </p>
+    </div>
+    <div style="font-size: 0.82rem; color: #94a3b8; text-align: right;">
+      Status: <strong style="color: #4ade80;">Active Engine</strong><br/>
+      Render: Scalable Vector Graphics (SVG 1.1)
+    </div>
+  </header>
+
+  <div class="workbench-container" id="container">
+    <div class="workbench-grid"></div>
+    
+    <svg id="workbench-svg">
+      <defs>
+        <!-- Gradients -->
+        <linearGradient id="arduino-pcb" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#008184" />
+          <stop offset="100%" stop-color="#00686b" />
+        </linearGradient>
+
+        <linearGradient id="metal-silver" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#cbd5e1" />
+          <stop offset="50%" stop-color="#f8fafc" />
+          <stop offset="100%" stop-color="#94a3b8" />
+        </linearGradient>
+
+        <linearGradient id="servo-body" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#0369a1" />
+          <stop offset="100%" stop-color="#075985" />
+        </linearGradient>
+
+        <radialGradient id="led-glow-grad" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#ef4444" stop-opacity="0.9" />
+          <stop offset="40%" stop-color="#ef4444" stop-opacity="0.5" />
+          <stop offset="100%" stop-color="#ef4444" stop-opacity="0" />
+        </radialGradient>
+
+        <!-- Drop shadow filter for cables and components -->
+        <filter id="wire-shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="3" dy="5" stdDeviation="4" flood-color="#000" flood-opacity="0.45" />
+        </filter>
+
+        <!-- LED bloom glow filter -->
+        <filter id="bloom" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      <!-- ============================================== -->
+      <!-- 1. ARDUINO UNO R3 BOARD (Position: 60, 80)     -->
+      <!-- ============================================== -->
+      <g id="arduino-uno" transform="translate(70, 80)" filter="url(#wire-shadow)">
+        <!-- Main PCB -->
+        <rect x="0" y="0" width="310" height="230" rx="14" fill="url(#arduino-pcb)" stroke="#004d4f" stroke-width="2" />
+        <rect x="8" y="8" width="294" height="214" rx="10" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" />
+
+        <!-- Silkscreen labels & branding -->
+        <text x="135" y="115" fill="rgba(255,255,255,0.7)" font-family="monospace" font-size="14" font-weight="bold" letter-spacing="1">ARDUINO</text>
+        <text x="145" y="132" fill="rgba(255,255,255,0.5)" font-family="monospace" font-size="10">UNO R3</text>
+        
+        <!-- USB Type-B Port -->
+        <rect x="-8" y="24" width="56" height="44" rx="4" fill="url(#metal-silver)" stroke="#64748b" stroke-width="1.5" />
+        <rect x="-12" y="32" width="6" height="28" rx="2" fill="#475569" />
+        <rect x="8" y="34" width="30" height="24" rx="2" fill="#1e293b" />
+
+        <!-- DC Power Barrel Jack -->
+        <rect x="-8" y="150" width="54" height="50" rx="3" fill="#0f172a" stroke="#334155" stroke-width="1" />
+        <circle cx="18" cy="175" r="8" fill="#475569" />
+        <circle cx="18" cy="175" r="3.5" fill="#94a3b8" />
+
+        <!-- ATmega328P DIP-28 Chip -->
+        <rect x="130" y="145" width="135" height="42" rx="4" fill="#090d16" stroke="#1e293b" stroke-width="1.5" />
+        <!-- Chip Notch -->
+        <path d="M 130 160 A 6 6 0 0 1 130 172 Z" fill="#1e293b" />
+        <text x="148" y="170" fill="#64748b" font-family="monospace" font-size="9" letter-spacing="0.5">ATMEGA328P-PU</text>
+        <!-- Chip Pin Legs (Silver) -->
+        <g fill="#94a3b8">
+          <rect x="138" y="139" width="3" height="6" /><rect x="150" y="139" width="3" height="6" />
+          <rect x="162" y="139" width="3" height="6" /><rect x="174" y="139" width="3" height="6" />
+          <rect x="186" y="139" width="3" height="6" /><rect x="198" y="139" width="3" height="6" />
+          <rect x="210" y="139" width="3" height="6" /><rect x="222" y="139" width="3" height="6" />
+          <rect x="234" y="139" width="3" height="6" /><rect x="246" y="139" width="3" height="6" />
+          <!-- Bottom legs -->
+          <rect x="138" y="187" width="3" height="6" /><rect x="150" y="187" width="3" height="6" />
+          <rect x="162" y="187" width="3" height="6" /><rect x="174" y="187" width="3" height="6" />
+          <rect x="186" y="187" width="3" height="6" /><rect x="198" y="187" width="3" height="6" />
+          <rect x="210" y="187" width="3" height="6" /><rect x="222" y="187" width="3" height="6" />
+          <rect x="234" y="187" width="3" height="6" /><rect x="246" y="187" width="3" height="6" />
+        </g>
+
+        <!-- 16MHz Crystal Oscillator -->
+        <rect x="78" y="105" width="22" height="12" rx="5" fill="url(#metal-silver)" stroke="#64748b" stroke-width="1" />
+        <text x="82" y="114" fill="#334155" font-family="monospace" font-size="6">16M</text>
+
+        <!-- Reset Button -->
+        <circle cx="68" cy="38" r="7" fill="#334155" />
+        <circle cx="68" cy="38" r="4" fill="#dc2626" />
+
+        <!-- Status SMD LEDs (L, ON) -->
+        <rect x="90" y="70" width="6" height="4" fill="#15803d" />
+        <text x="88" y="82" fill="rgba(255,255,255,0.6)" font-family="sans-serif" font-size="6">ON</text>
+        <rect x="110" y="70" width="6" height="4" fill="#f59e0b" id="smd-led-l" />
+        <text x="111" y="82" fill="rgba(255,255,255,0.6)" font-family="sans-serif" font-size="6">L</text>
+
+        <!-- TOP HEADER: Digital Pins (D0 to D13, GND, AREF) -->
+        <rect x="100" y="6" width="198" height="18" fill="#111827" stroke="#374151" stroke-width="1" rx="2" />
+        <text x="115" y="32" fill="#cbd5e1" font-family="monospace" font-size="7.5">AREF  GND  13  12  11  10   9   8   7   6   5   4   3   2  TX  RX</text>
+
+        <!-- BOTTOM HEADER 1: Power (RESET, 3.3V, 5V, GND, VIN) -->
+        <rect x="100" y="206" width="90" height="18" fill="#111827" stroke="#374151" stroke-width="1" rx="2" />
+        <text x="105" y="200" fill="#cbd5e1" font-family="monospace" font-size="7.5">IO  RST  3V  5V  GND GND VIN</text>
+
+        <!-- BOTTOM HEADER 2: Analog Pins (A0 to A5) -->
+        <rect x="205" y="206" width="85" height="18" fill="#111827" stroke="#374151" stroke-width="1" rx="2" />
+        <text x="215" y="200" fill="#cbd5e1" font-family="monospace" font-size="7.5">A0  A1  A2  A3  A4  A5</text>
+      </g>
+
+      <!-- Interactive Pin Circles for Arduino (Coordinates mapped in SVG space) -->
+      <g id="arduino-pins">
+        <!-- Digital Pins: X starts at ~230 down to 365, Y = 95 -->
+        <!-- D13 -->
+        <g class="pin-target" data-name="Arduino Pin 13" data-x="233" data-y="95">
+          <circle cx="233" cy="95" r="4" fill="#000" stroke="#fbbf24" stroke-width="1.5" class="pin-core" />
+          <circle cx="233" cy="95" r="9" fill="#fbbf24" opacity="0" class="pin-glow" />
+        </g>
+        <!-- D10 -->
+        <g class="pin-target" data-name="Arduino Pin 10 (PWM)" data-x="269" data-y="95">
+          <circle cx="269" cy="95" r="4" fill="#000" stroke="#fbbf24" stroke-width="1.5" class="pin-core" />
+          <circle cx="269" cy="95" r="9" fill="#fbbf24" opacity="0" class="pin-glow" />
+        </g>
+        <!-- D9 -->
+        <g class="pin-target" data-name="Arduino Pin 9 (PWM)" data-x="281" data-y="95">
+          <circle cx="281" cy="95" r="4" fill="#000" stroke="#fbbf24" stroke-width="1.5" class="pin-core" />
+          <circle cx="281" cy="95" r="9" fill="#fbbf24" opacity="0" class="pin-glow" />
+        </g>
+        <!-- D8 -->
+        <g class="pin-target" data-name="Arduino Pin 8" data-x="293" data-y="95">
+          <circle cx="293" cy="95" r="4" fill="#000" stroke="#fbbf24" stroke-width="1.5" class="pin-core" />
+          <circle cx="293" cy="95" r="9" fill="#fbbf24" opacity="0" class="pin-glow" />
+        </g>
+        <!-- D5 -->
+        <g class="pin-target" data-name="Arduino Pin 5 (PWM)" data-x="329" data-y="95">
+          <circle cx="329" cy="95" r="4" fill="#000" stroke="#fbbf24" stroke-width="1.5" class="pin-core" />
+          <circle cx="329" cy="95" r="9" fill="#fbbf24" opacity="0" class="pin-glow" />
+        </g>
+        <!-- Power 5V (X = 217, Y = 295) -->
+        <g class="pin-target" data-name="Arduino 5V Power" data-x="218" data-y="295">
+          <circle cx="218" cy="295" r="4" fill="#000" stroke="#ef4444" stroke-width="1.5" class="pin-core" />
+          <circle cx="218" cy="295" r="9" fill="#ef4444" opacity="0" class="pin-glow" />
+        </g>
+        <!-- Power GND (X = 230, Y = 295) -->
+        <g class="pin-target" data-name="Arduino GND (Ground)" data-x="230" data-y="295">
+          <circle cx="230" cy="295" r="4" fill="#000" stroke="#94a3b8" stroke-width="1.5" class="pin-core" />
+          <circle cx="230" cy="295" r="9" fill="#94a3b8" opacity="0" class="pin-glow" />
+        </g>
+      </g>
+
+      <!-- ============================================== -->
+      <!-- 2. HC-SR04 ULTRASONIC SENSOR (Top Right)       -->
+      <!-- ============================================== -->
+      <g id="hc-sr04" transform="translate(480, 50)" filter="url(#wire-shadow)">
+        <!-- Blue PCB -->
+        <rect x="0" y="0" width="170" height="90" rx="8" fill="#1d4ed8" stroke="#1e40af" stroke-width="1.5" />
+        <text x="50" y="16" fill="rgba(255,255,255,0.7)" font-family="monospace" font-size="9" font-weight="bold">HC-SR04</text>
+
+        <!-- Left Barrel Transmitter (T) -->
+        <g transform="translate(42, 48)">
+          <circle cx="0" cy="0" r="28" fill="url(#metal-silver)" stroke="#475569" stroke-width="1.5" />
+          <!-- Concentric Mesh Grills -->
+          <circle cx="0" cy="0" r="22" fill="#0f172a" />
+          <circle cx="0" cy="0" r="17" fill="none" stroke="#64748b" stroke-width="1" stroke-dasharray="2 2" />
+          <circle cx="0" cy="0" r="11" fill="none" stroke="#94a3b8" stroke-width="1" />
+          <text x="-4" y="4" fill="#fff" font-family="sans-serif" font-size="10" font-weight="bold">T</text>
+        </g>
+
+        <!-- Right Barrel Receiver (R) -->
+        <g transform="translate(128, 48)">
+          <circle cx="0" cy="0" r="28" fill="url(#metal-silver)" stroke="#475569" stroke-width="1.5" />
+          <circle cx="0" cy="0" r="22" fill="#0f172a" />
+          <circle cx="0" cy="0" r="17" fill="none" stroke="#64748b" stroke-width="1" stroke-dasharray="2 2" />
+          <circle cx="0" cy="0" r="11" fill="none" stroke="#94a3b8" stroke-width="1" />
+          <text x="-4" y="4" fill="#fff" font-family="sans-serif" font-size="10" font-weight="bold">R</text>
+        </g>
+
+        <!-- Sensor Pins Labeling -->
+        <text x="42" y="85" fill="#f8fafc" font-family="monospace" font-size="8">VCC TRIG ECHO GND</text>
+      </g>
+
+      <!-- Pins for HC-SR04 -->
+      <g id="hc-sr04-pins">
+        <!-- VCC -->
+        <g class="pin-target" data-name="HC-SR04: VCC (5V)" data-x="530" data-y="135">
+          <circle cx="530" cy="135" r="4" fill="#000" stroke="#ef4444" stroke-width="1.5" class="pin-core" />
+          <circle cx="530" cy="135" r="9" fill="#ef4444" opacity="0" class="pin-glow" />
+        </g>
+        <!-- TRIG -->
+        <g class="pin-target" data-name="HC-SR04: TRIG" data-x="556" data-y="135">
+          <circle cx="556" cy="135" r="4" fill="#000" stroke="#38bdf8" stroke-width="1.5" class="pin-core" />
+          <circle cx="556" cy="135" r="9" fill="#38bdf8" opacity="0" class="pin-glow" />
+        </g>
+        <!-- ECHO -->
+        <g class="pin-target" data-name="HC-SR04: ECHO" data-x="585" data-y="135">
+          <circle cx="585" cy="135" r="4" fill="#000" stroke="#a855f7" stroke-width="1.5" class="pin-core" />
+          <circle cx="585" cy="135" r="9" fill="#a855f7" opacity="0" class="pin-glow" />
+        </g>
+        <!-- GND -->
+        <g class="pin-target" data-name="HC-SR04: GND" data-x="615" data-y="135">
+          <circle cx="615" cy="135" r="4" fill="#000" stroke="#94a3b8" stroke-width="1.5" class="pin-core" />
+          <circle cx="615" cy="135" r="9" fill="#94a3b8" opacity="0" class="pin-glow" />
+        </g>
+      </g>
+
+      <!-- ============================================== -->
+      <!-- 3. 5mm RED DIFFUSED LED & RESISTOR (Middle)    -->
+      <!-- ============================================== -->
+      <g id="led-module" transform="translate(480, 210)" filter="url(#wire-shadow)">
+        <!-- Glow Aura (Toggled via JS) -->
+        <circle id="led-aura" cx="50" cy="35" r="38" fill="url(#led-glow-grad)" opacity="0" />
+
+        <!-- 5mm LED Bulb Dome -->
+        <g transform="translate(50, 35)">
+          <path d="M -16, 0 A 16 16 0 0 1 16, 0 L 16, 18 L -16, 18 Z" fill="#b91c1c" stroke="#dc2626" stroke-width="1.5" id="led-bulb" />
+          <rect x="-18" y="18" width="36" height="5" rx="1.5" fill="#991b1b" stroke="#7f1d1d" />
+          <!-- Inner Cathode Anvil Silhouettes -->
+          <path d="M -5 10 L 0 2 L 6 8 L 6 15" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" fill="none" />
+          <!-- Specular reflection highlight -->
+          <ellipse cx="-6" cy="-4" rx="4" ry="7" fill="rgba(255,255,255,0.4)" transform="rotate(-25 -6 -4)" />
+        </g>
+
+        <!-- Anode Leg (Long with slight bend) -->
+        <path d="M 44 58 L 44 80 L 40 92 L 40 120" stroke="url(#metal-silver)" stroke-width="2.5" fill="none" />
+        <!-- Cathode Leg (Short Straight) -->
+        <path d="M 56 58 L 56 120" stroke="url(#metal-silver)" stroke-width="2.5" fill="none" />
+
+        <text x="24" y="132" fill="#94a3b8" font-family="monospace" font-size="8">ANODE (+)</text>
+        <text x="56" y="132" fill="#94a3b8" font-family="monospace" font-size="8">CATHODE (-)</text>
+      </g>
+
+      <!-- Pins for LED -->
+      <g id="led-pins">
+        <g class="pin-target" data-name="LED Anode (+)" data-x="520" data-y="330">
+          <circle cx="520" cy="330" r="4" fill="#000" stroke="#f59e0b" stroke-width="1.5" class="pin-core" />
+          <circle cx="520" cy="330" r="9" fill="#f59e0b" opacity="0" class="pin-glow" />
+        </g>
+        <g class="pin-target" data-name="LED Cathode (-)" data-x="536" data-y="330">
+          <circle cx="536" cy="330" r="4" fill="#000" stroke="#94a3b8" stroke-width="1.5" class="pin-core" />
+          <circle cx="536" cy="330" r="9" fill="#94a3b8" opacity="0" class="pin-glow" />
+        </g>
+      </g>
+
+      <!-- 220 Ohm Resistor -->
+      <g id="resistor-220" transform="translate(630, 230)" filter="url(#wire-shadow)">
+        <!-- Leads -->
+        <line x1="10" y1="50" x2="10" y2="10" stroke="url(#metal-silver)" stroke-width="2.5" />
+        <line x1="10" y1="100" x2="10" y2="140" stroke="url(#metal-silver)" stroke-width="2.5" />
+        
+        <!-- Ceramic Body (Beige Dumbbell) -->
+        <rect x="0" y="50" width="20" height="50" rx="6" fill="#fef08a" stroke="#ca8a04" stroke-width="1.2" />
+
+        <!-- Color Bands: Red, Red, Brown, Gold (220 Ohm 5%) -->
+        <rect x="0" y="58" width="20" height="4" fill="#dc2626" />
+        <rect x="0" y="68" width="20" height="4" fill="#dc2626" />
+        <rect x="0" y="78" width="20" height="4" fill="#78350f" />
+        <rect x="0" y="90" width="20" height="3" fill="#eab308" />
+
+        <text x="-4" y="42" fill="#e2e8f0" font-family="monospace" font-size="9" font-weight="bold">220Ω</text>
+      </g>
+
+      <!-- ============================================== -->
+      <!-- 4. SG90 MICRO SERVO (Right Bottom)             -->
+      <!-- ============================================== -->
+      <g id="sg90-servo" transform="translate(480, 410)" filter="url(#wire-shadow)">
+        <!-- Translucent Blue Casing -->
+        <rect x="0" y="30" width="120" height="70" rx="6" fill="url(#servo-body)" stroke="#0284c7" stroke-width="1.5" />
+        <rect x="-14" y="48" width="14" height="18" fill="#0369a1" stroke="#0284c7" />
+        <rect x="120" y="48" width="14" height="18" fill="#0369a1" stroke="#0284c7" />
+        <circle cx="-6" cy="57" r="3" fill="#0f172a" />
+        <circle cx="126" cy="57" r="3" fill="#0f172a" />
+
+        <!-- White Gear Output Cylinder -->
+        <circle cx="35" cy="30" r="20" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+
+        <!-- Animated Rotating Servo Horn (Arm) -->
+        <g id="servo-horn" transform="translate(35, 30) rotate(0)">
+          <path d="M -8, -6 L 55, -2 L 55, 2 L -8, 6 A 8 8 0 0 1 -8 -6 Z" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5" />
+          <circle cx="0" cy="0" r="5" fill="#475569" />
+          <!-- Pin holes on horn arm -->
+          <circle cx="20" cy="0" r="1.8" fill="#64748b" />
+          <circle cx="34" cy="0" r="1.8" fill="#64748b" />
+          <circle cx="48" cy="0" r="1.8" fill="#64748b" />
+        </g>
+
+        <!-- Label -->
+        <text x="35" y="80" fill="#fff" font-family="monospace" font-size="11" font-weight="bold">SG90 9g</text>
+        <text x="40" y="93" fill="rgba(255,255,255,0.7)" font-family="sans-serif" font-size="7">MICRO SERVO</text>
+      </g>
+
+      <!-- Pins for Servo -->
+      <g id="servo-pins">
+        <g class="pin-target" data-name="Servo: Brown (GND)" data-x="485" data-y="530">
+          <circle cx="485" cy="530" r="4" fill="#000" stroke="#78350f" stroke-width="1.5" class="pin-core" />
+          <circle cx="485" cy="530" r="9" fill="#78350f" opacity="0" class="pin-glow" />
+        </g>
+        <g class="pin-target" data-name="Servo: Red (5V)" data-x="505" data-y="530">
+          <circle cx="505" cy="530" r="4" fill="#000" stroke="#ef4444" stroke-width="1.5" class="pin-core" />
+          <circle cx="505" cy="530" r="9" fill="#ef4444" opacity="0" class="pin-glow" />
+        </g>
+        <g class="pin-target" data-name="Servo: Orange (PWM Signal)" data-x="525" data-y="530">
+          <circle cx="525" cy="530" r="4" fill="#000" stroke="#f97316" stroke-width="1.5" class="pin-core" />
+          <circle cx="525" cy="530" r="9" fill="#f97316" opacity="0" class="pin-glow" />
+        </g>
+      </g>
+
+      <!-- Jumper Cable Layer -->
+      <g id="wires-layer"></g>
+
+      <!-- Active In-Progress Wire Drawing -->
+      <path id="active-wire" d="" stroke="#38bdf8" stroke-width="3.5" fill="none" opacity="0" stroke-linecap="round" filter="url(#wire-shadow)" />
+    </svg>
+
+    <!-- Floating Interactive Action Bar -->
+    <div class="action-bar">
+      <div class="tip-pill" id="hover-info">👉 Arahkan kursor / klik pin emas untuk mulai merangkai kabel</div>
+      <button class="btn-primary" onclick="toggleLedSimulation()">💡 Tes Nyala Lampu LED</button>
+      <button onclick="rotateServoDemo()">🔄 Putar Sudut Servo</button>
+      <button onclick="clearWires()" style="color: #f87171;">🗑️ Hapus Kabel</button>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let selectedPin = null;
+    let wires = [];
+    let isLedOn = false;
+    let servoAngle = 0;
+
+    const svg = document.getElementById('workbench-svg');
+    const activeWire = document.getElementById('active-wire');
+    const wiresLayer = document.getElementById('wires-layer');
+    const hoverInfo = document.getElementById('hover-info');
+
+    // Attach pin click handlers
+    document.querySelectorAll('.pin-target').forEach(pin => {
+      pin.addEventListener('mouseenter', () => {
+        hoverInfo.innerHTML = `Pin Terpilih: <strong style="color: #facc15;">${pin.getAttribute('data-name')}</strong>`;
+      });
+      pin.addEventListener('mouseleave', () => {
+        if (!selectedPin) hoverInfo.innerText = '👉 Arahkan kursor / klik pin emas untuk mulai merangkai kabel';
+      });
+      pin.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const x = parseFloat(pin.getAttribute('data-x'));
+        const y = parseFloat(pin.getAttribute('data-y'));
+        const name = pin.getAttribute('data-name');
+
+        if (!selectedPin) {
+          // Start wire
+          selectedPin = { pin, x, y, name };
+          activeWire.setAttribute('opacity', '1');
+          hoverInfo.innerHTML = `Tarik kabel dari <strong>${name}</strong> -> Klik pin tujuan`;
+        } else {
+          // Finish wire
+          if (selectedPin.pin !== pin) {
+            createJumperWire(selectedPin.x, selectedPin.y, x, y, selectedPin.name, name);
+          }
+          selectedPin = null;
+          activeWire.setAttribute('opacity', '0');
+          hoverInfo.innerText = '✅ Kabel tersambung! Klik pin lain untuk sambungan baru.';
+        }
+      });
+    });
+
+    // Mouse move for active curve
+    svg.addEventListener('mousemove', (e) => {
+      if (!selectedPin) return;
+      const rect = svg.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      // Draw Natural Hanging Bezier Jumper Wire
+      const d = makeBezierPath(selectedPin.x, selectedPin.y, mouseX, mouseY);
+      activeWire.setAttribute('d', d);
+    });
+
+    // Click outside to cancel wire
+    svg.addEventListener('click', () => {
+      if (selectedPin) {
+        selectedPin = null;
+        activeWire.setAttribute('opacity', '0');
+        hoverInfo.innerText = 'Batal menarik kabel.';
+      }
+    });
+
+    // Make smooth hanging bezier curve
+    function makeBezierPath(x1, y1, x2, y2) {
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      // Natural slack curve droop
+      const sag = Math.min(80, dist * 0.35);
+
+      const cx1 = x1 + dx * 0.25;
+      const cy1 = y1 + dy * 0.25 + sag;
+      const cx2 = x1 + dx * 0.75;
+      const cy2 = y1 + dy * 0.75 + sag;
+
+      return `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`;
+    }
+
+    // Auto-pick cable color based on pin function
+    function pickColor(name1, name2) {
+      const comb = (name1 + ' ' + name2).toLowerCase();
+      if (comb.includes('gnd') || comb.includes('ground')) return '#1e293b'; // Black
+      if (comb.includes('5v') || comb.includes('vcc') || comb.includes('anode')) return '#dc2626'; // Red
+      if (comb.includes('trig') || comb.includes('pin 9')) return '#0284c7'; // Cyan
+      if (comb.includes('echo') || comb.includes('pin 8')) return '#9333ea'; // Purple
+      if (comb.includes('servo') || comb.includes('orange')) return '#ea580c'; // Orange
+      return '#eab308'; // Yellow default
+    }
+
+    // Create permanent jumper wire
+    function createJumperWire(x1, y1, x2, y2, name1, name2) {
+      const pathD = makeBezierPath(x1, y1, x2, y2);
+      const color = pickColor(name1, name2);
+
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.setAttribute('filter', 'url(#wire-shadow)');
+
+      // The cable
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', pathD);
+      path.setAttribute('stroke', color);
+      path.setAttribute('stroke-width', '4');
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke-linecap', 'round');
+
+      // Cable DuPont connector heads
+      const h1 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      h1.setAttribute('cx', x1); h1.setAttribute('cy', y1); h1.setAttribute('r', '5'); h1.setAttribute('fill', '#0f172a');
+      h1.setAttribute('stroke', color); h1.setAttribute('stroke-width', '2');
+
+      const h2 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      h2.setAttribute('cx', x2); h2.setAttribute('cy', y2); h2.setAttribute('r', '5'); h2.setAttribute('fill', '#0f172a');
+      h2.setAttribute('stroke', color); h2.setAttribute('stroke-width', '2');
+
+      g.appendChild(path);
+      g.appendChild(h1);
+      g.appendChild(h2);
+      wiresLayer.appendChild(g);
+      wires.push(g);
+    }
+
+    function clearWires() {
+      wiresLayer.innerHTML = '';
+      wires = [];
+      hoverInfo.innerText = 'Semua kabel dibersihkan.';
+    }
+
+    // Interactive Demo Toggles
+    function toggleLedSimulation() {
+      isLedOn = !isLedOn;
+      const aura = document.getElementById('led-aura');
+      const bulb = document.getElementById('led-bulb');
+      const smd = document.getElementById('smd-led-l');
+
+      if (isLedOn) {
+        aura.setAttribute('opacity', '1');
+        bulb.setAttribute('fill', '#ef4444');
+        bulb.setAttribute('filter', 'url(#bloom)');
+        smd.setAttribute('fill', '#facc15');
+      } else {
+        aura.setAttribute('opacity', '0');
+        bulb.setAttribute('fill', '#b91c1c');
+        bulb.removeAttribute('filter');
+        smd.setAttribute('fill', '#78350f');
+      }
+    }
+
+    function rotateServoDemo() {
+      servoAngle = (servoAngle === 0) ? 90 : (servoAngle === 90 ? 180 : 0);
+      const horn = document.getElementById('servo-horn');
+      horn.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+      horn.setAttribute('transform', `translate(35, 30) rotate(${servoAngle})`);
+      hoverInfo.innerHTML = `Servo PWM commanded: <strong style="color: #38bdf8;">${servoAngle} Derajat</strong>`;
+    }
+  </script>
+</body>
+</html>

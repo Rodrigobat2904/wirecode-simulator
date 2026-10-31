@@ -1,0 +1,282 @@
+:root {
+  --bg: #0b0f19;
+  --panel: #111827;
+  --panel-alt: #0f172a;
+  --border: #1e293b;
+  --accent: #38bdf8;
+  --accent-hover: #0284c7;
+  --red: #f87171;
+  --green: #4ade80;
+  --yellow: #fbbf24;
+  --text: #f8fafc;
+  --text-muted: #94a3b8;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  padding: 16px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Header */
+header {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.brand-badge {
+  background: #0284c7;
+  color: #e0f2fe;
+  font-size: 0.72rem;
+  font-weight: bold;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  letter-spacing: 0.05em;
+}
+
+h1 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #fff;
+  margin-top: 4px;
+}
+
+/* Mission Select Dropdown */
+.mission-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--panel-alt);
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+select#mission-select {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #f8fafc;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+}
+
+/* Main Split Workspace */
+.main-grid {
+  display: grid;
+  grid-template-columns: 460px 1fr;
+  gap: 16px;
+  flex: 1;
+}
+
+@media (max-width: 1100px) {
+  .main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Card */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.card-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Code Editor Area */
+.editor-container {
+  display: flex;
+  background: #050811;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  height: 280px;
+  overflow: hidden;
+  font-family: "Fira Code", monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.line-numbers {
+  width: 36px;
+  padding: 10px 6px;
+  text-align: right;
+  color: #475569;
+  background: #090d16;
+  border-right: 1px solid #1e293b;
+  user-select: none;
+  overflow: hidden;
+  white-space: pre;
+}
+
+textarea#code-editor {
+  flex: 1;
+  background: transparent;
+  color: #e2e8f0;
+  padding: 10px 12px;
+  border: none;
+  outline: none;
+  resize: none;
+  white-space: pre;
+  tab-size: 2;
+}
+
+/* Console Diagnostics Output */
+.console-box {
+  background: #050811;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 12px;
+  height: 190px;
+  overflow-y: auto;
+  font-family: monospace;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+/* SVG Workbench */
+.workbench-wrap {
+  position: relative;
+  width: 100%;
+  height: 520px;
+  background: #090d16;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.7);
+}
+
+.workbench-grid {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-image: radial-gradient(#1e293b 1px, transparent 1px);
+  background-size: 20px 20px;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+svg#workbench-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Pin interaction */
+.pin-target {
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pin-target:hover circle.pin-glow {
+  opacity: 0.6;
+  r: 12;
+}
+
+.pin-target:hover circle.pin-core {
+  fill: #facc15 !important;
+  stroke: #ffffff !important;
+}
+
+/* Status Badges */
+.status-badge {
+  font-size: 0.72rem;
+  font-weight: bold;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+}
+.status-badge.unverified { background: #334155; color: #cbd5e1; }
+.status-badge.idle { background: #1e293b; color: #94a3b8; }
+.status-badge.success { background: #065f46; color: #a7f3d0; animation: pulse-green 1.5s infinite alternate; }
+.status-badge.error { background: #7f1d1d; color: #fecaca; }
+
+@keyframes pulse-green {
+  0% { box-shadow: 0 0 0 rgba(74, 222, 128, 0.4); }
+  100% { box-shadow: 0 0 12px rgba(74, 222, 128, 0.8); }
+}
+
+/* Buttons */
+button {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+button:hover {
+  background: #334155;
+  border-color: var(--accent);
+}
+
+button.btn-primary {
+  background: #059669;
+  border-color: #10b981;
+  color: #ecfdf5;
+}
+button.btn-primary:hover {
+  background: #047857;
+}
+
+button.btn-danger {
+  background: #7f1d1d;
+  border-color: #991b1b;
+  color: #fee2e2;
+}
+button.btn-danger:hover {
+  background: #991b1b;
+}
+
+/* Sim Controls Area */
+.sim-controls-panel {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 12px 16px;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+}
