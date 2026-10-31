@@ -10,7 +10,7 @@ class WorkbenchUI {
     this.onConnectionChange = onConnectionChange;
 
     this.selectedPin = null;
-    this.pinRegistry = new Map(); // pinKey -> { compId, termId, x, y, name, type }
+    this.pinRegistry = new Map(); // pinKey -> { compId, termId, x, y, name, meta }
 
     this.initDOM();
     this.attachEvents();
@@ -58,13 +58,13 @@ class WorkbenchUI {
       </defs>
 
       <!-- Layers -->
-      <g id="layer-board"></g>
+      <g id="layer-board" style="pointer-events: none;"></g>
       <g id="layer-components"></g>
       <g id="layer-wires"></g>
       <g id="layer-pins"></g>
 
       <!-- Active in-progress wire -->
-      <path id="active-wire-path" d="" stroke="#38bdf8" stroke-width="4" fill="none" opacity="0" stroke-linecap="round" filter="url(#wire-shadow)" />
+      <path id="active-wire-path" d="" stroke="#38bdf8" stroke-width="4" fill="none" opacity="0" stroke-linecap="round" filter="url(#wire-shadow)" style="pointer-events: none;" />
     `;
 
     this.layerBoard = this.svg.querySelector('#layer-board');
@@ -74,24 +74,39 @@ class WorkbenchUI {
     this.activeWirePath = this.svg.querySelector('#active-wire-path');
   }
 
+  getSVGCoords(e) {
+    const pt = this.svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const ctm = this.svg.getScreenCTM();
+    if (ctm) {
+      return pt.matrixTransform(ctm.inverse());
+    }
+    const rect = this.svg.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+
   attachEvents() {
     this.svg.addEventListener('mousemove', (e) => {
       if (!this.selectedPin) return;
-      const rect = this.svg.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-
-      const d = this.makeBezierPath(this.selectedPin.x, this.selectedPin.y, mouseX, mouseY);
+      const coords = this.getSVGCoords(e);
+      const d = this.makeBezierPath(this.selectedPin.x, this.selectedPin.y, coords.x, coords.y);
       this.activeWirePath.setAttribute('d', d);
     });
 
-    this.svg.addEventListener('click', () => {
-      if (this.selectedPin) {
-        this.selectedPin = null;
-        this.activeWirePath.setAttribute('opacity', '0');
-        if (this.onPinHover) this.onPinHover(null, 'Kabel dibatalkan.');
+    // Escape key cancels active wire
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.selectedPin) {
+        this.cancelActiveWire();
       }
     });
+  }
+
+  cancelActiveWire() {
+    this.selectedPin = null;
+    this.activeWirePath.setAttribute('opacity', '0');
+    this.renderPinTargets();
+    if (this.onPinHover) this.onPinHover(null, 'Kabel dibatalkan.');
   }
 
   /**
@@ -114,7 +129,7 @@ class WorkbenchUI {
       { id: 'D10',     x: x + 104 + 5 * pitch, y: yTopPin, label: '~10' },
       { id: 'D9',      x: x + 104 + 6 * pitch, y: yTopPin, label: '~9' },
       { id: 'D8',      x: x + 104 + 7 * pitch, y: yTopPin, label: '8' },
-      // Gap of 6px between the two headers
+      // Gap of 6px between headers
       { id: 'D7',      x: x + 202 + 0 * pitch, y: yTopPin, label: '7' },
       { id: 'D6',      x: x + 202 + 1 * pitch, y: yTopPin, label: '~6' },
       { id: 'D5',      x: x + 202 + 2 * pitch, y: yTopPin, label: '~5' },
@@ -204,7 +219,7 @@ class WorkbenchUI {
         <rect x="110" y="70" width="6" height="4" fill="#78350f" id="board-led-l" />
         <text x="111" y="82" fill="rgba(255,255,255,0.6)" font-family="sans-serif" font-size="6">L</text>
 
-        <!-- Top Header Female Plastic Housings (2 strips separated by small physical gap) -->
+        <!-- Top Header Female Plastic Housings -->
         <rect x="98" y="6" width="98" height="18" fill="#111827" stroke="#374151" stroke-width="1" rx="2" />
         <rect x="196" y="6" width="98" height="18" fill="#111827" stroke="#374151" stroke-width="1" rx="2" />
 
@@ -216,7 +231,7 @@ class WorkbenchUI {
       </g>
 
       <!-- Centered Pin Labels Directly Aligned with each pin hole -->
-      <g id="arduino-pin-labels">
+      <g id="arduino-pin-labels" style="pointer-events: none;">
         ${topLabelsSvg}
         ${bottomPowerLabelsSvg}
         ${bottomAnalogLabelsSvg}
@@ -276,18 +291,18 @@ class WorkbenchUI {
     g.setAttribute('transform', `translate(${x}, ${y})`);
     g.setAttribute('filter', 'url(#wire-shadow)');
     g.innerHTML = `
-      <circle id="${id}-aura" cx="30" cy="25" r="34" fill="url(#led-glow-grad)" opacity="0" />
-      <g transform="translate(30, 25)">
+      <circle id="${id}-aura" cx="30" cy="25" r="34" fill="url(#led-glow-grad)" opacity="0" style="pointer-events: none;" />
+      <g transform="translate(30, 25)" style="pointer-events: none;">
         <path id="${id}-bulb" d="M -14, 0 A 14 14 0 0 1 14, 0 L 14, 16 L -14, 16 Z" fill="#b91c1c" stroke="#dc2626" stroke-width="1.5" />
         <rect x="-16" y="16" width="32" height="4" rx="1.5" fill="#991b1b" />
         <ellipse cx="-5" cy="-3" rx="3" ry="5" fill="rgba(255,255,255,0.4)" transform="rotate(-25 -5 -3)" />
       </g>
-      <!-- Anode Leg (Long with slight bend) -->
-      <path d="M 25 45 L 25 65 L 20 75 L 20 100" stroke="url(#metal-silver)" stroke-width="2.5" fill="none" />
-      <!-- Cathode Leg (Short) -->
-      <path d="M 35 45 L 35 100" stroke="url(#metal-silver)" stroke-width="2.5" fill="none" />
-      <text x="20" y="112" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7.5">ANODE(+)</text>
-      <text x="40" y="112" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7.5">CATHODE(-)</text>
+      <!-- Anode Leg -->
+      <path d="M 25 45 L 25 65 L 20 75 L 20 100" stroke="url(#metal-silver)" stroke-width="2.5" fill="none" style="pointer-events: none;" />
+      <!-- Cathode Leg -->
+      <path d="M 35 45 L 35 100" stroke="url(#metal-silver)" stroke-width="2.5" fill="none" style="pointer-events: none;" />
+      <text x="20" y="114" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7.5" style="pointer-events: none;">ANODE(+)</text>
+      <text x="40" y="114" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7.5" style="pointer-events: none;">CATHODE(-)</text>
     `;
     this.layerComponents.appendChild(g);
 
@@ -300,14 +315,14 @@ class WorkbenchUI {
     g.setAttribute('transform', `translate(${x}, ${y})`);
     g.setAttribute('filter', 'url(#wire-shadow)');
     g.innerHTML = `
-      <line x1="10" y1="40" x2="10" y2="10" stroke="url(#metal-silver)" stroke-width="2.5" />
-      <line x1="10" y1="80" x2="10" y2="110" stroke="url(#metal-silver)" stroke-width="2.5" />
-      <rect x="0" y="40" width="20" height="40" rx="5" fill="#fef08a" stroke="#ca8a04" stroke-width="1.2" />
-      <rect x="0" y="46" width="20" height="3" fill="#dc2626" />
-      <rect x="0" y="54" width="20" height="3" fill="#dc2626" />
-      <rect x="0" y="62" width="20" height="3" fill="#78350f" />
-      <rect x="0" y="71" width="20" height="2.5" fill="#eab308" />
-      <text x="10" y="32" text-anchor="middle" fill="#e2e8f0" font-family="monospace" font-size="8.5" font-weight="bold">220Ω</text>
+      <line x1="10" y1="40" x2="10" y2="10" stroke="url(#metal-silver)" stroke-width="2.5" style="pointer-events: none;" />
+      <line x1="10" y1="80" x2="10" y2="110" stroke="url(#metal-silver)" stroke-width="2.5" style="pointer-events: none;" />
+      <rect x="0" y="40" width="20" height="40" rx="5" fill="#fef08a" stroke="#ca8a04" stroke-width="1.2" style="pointer-events: none;" />
+      <rect x="0" y="46" width="20" height="3" fill="#dc2626" style="pointer-events: none;" />
+      <rect x="0" y="54" width="20" height="3" fill="#dc2626" style="pointer-events: none;" />
+      <rect x="0" y="62" width="20" height="3" fill="#78350f" style="pointer-events: none;" />
+      <rect x="0" y="71" width="20" height="2.5" fill="#eab308" style="pointer-events: none;" />
+      <text x="10" y="32" text-anchor="middle" fill="#e2e8f0" font-family="monospace" font-size="8.5" font-weight="bold" style="pointer-events: none;">220Ω</text>
     `;
     this.layerComponents.appendChild(g);
 
@@ -320,14 +335,14 @@ class WorkbenchUI {
     g.setAttribute('transform', `translate(${x}, ${y})`);
     g.setAttribute('filter', 'url(#wire-shadow)');
     g.innerHTML = `
-      <rect x="0" y="0" width="55" height="55" rx="6" fill="#1e293b" stroke="#475569" stroke-width="1.5" />
-      <circle id="${id}-plunger" cx="27.5" cy="27.5" r="16" fill="#0f172a" stroke="#64748b" stroke-width="1.5" style="cursor: pointer; transition: 0.1s;" />
-      <circle cx="27.5" cy="27.5" r="12" fill="#3b82f6" />
+      <rect x="0" y="0" width="55" height="55" rx="6" fill="#1e293b" stroke="#475569" stroke-width="1.5" style="pointer-events: none;" />
+      <circle id="${id}-plunger" cx="27.5" cy="27.5" r="16" fill="#0f172a" stroke="#64748b" stroke-width="1.5" style="cursor: pointer; pointer-events: all;" />
+      <circle cx="27.5" cy="27.5" r="12" fill="#3b82f6" style="pointer-events: none;" />
       <!-- Metal Pins -->
-      <line x1="10" y1="55" x2="10" y2="70" stroke="url(#metal-silver)" stroke-width="3" />
-      <line x1="45" y1="55" x2="45" y2="70" stroke="url(#metal-silver)" stroke-width="3" />
-      <text x="10" y="82" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7.5">T1</text>
-      <text x="45" y="82" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7.5">T2</text>
+      <line x1="10" y1="55" x2="10" y2="70" stroke="url(#metal-silver)" stroke-width="3" style="pointer-events: none;" />
+      <line x1="45" y1="55" x2="45" y2="70" stroke="url(#metal-silver)" stroke-width="3" style="pointer-events: none;" />
+      <text x="10" y="82" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7.5" style="pointer-events: none;">T1</text>
+      <text x="45" y="82" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7.5" style="pointer-events: none;">T2</text>
     `;
     this.layerComponents.appendChild(g);
 
@@ -346,28 +361,28 @@ class WorkbenchUI {
     g.setAttribute('transform', `translate(${x}, ${y})`);
     g.setAttribute('filter', 'url(#wire-shadow)');
     g.innerHTML = `
-      <rect x="0" y="0" width="160" height="85" rx="8" fill="#1d4ed8" stroke="#1e40af" stroke-width="1.5" />
-      <text x="50" y="16" fill="rgba(255,255,255,0.7)" font-family="monospace" font-size="9" font-weight="bold">HC-SR04</text>
+      <rect x="0" y="0" width="160" height="85" rx="8" fill="#1d4ed8" stroke="#1e40af" stroke-width="1.5" style="pointer-events: none;" />
+      <text x="50" y="16" fill="rgba(255,255,255,0.7)" font-family="monospace" font-size="9" font-weight="bold" style="pointer-events: none;">HC-SR04</text>
       <!-- Transducer T -->
-      <g transform="translate(38, 45)">
+      <g transform="translate(38, 45)" style="pointer-events: none;">
         <circle cx="0" cy="0" r="26" fill="url(#metal-silver)" stroke="#475569" stroke-width="1.5" />
         <circle cx="0" cy="0" r="20" fill="#0f172a" />
         <circle cx="0" cy="0" r="10" fill="none" stroke="#64748b" stroke-width="1" />
         <text x="-4" y="4" fill="#fff" font-family="sans-serif" font-size="9" font-weight="bold">T</text>
       </g>
       <!-- Transducer R -->
-      <g transform="translate(122, 45)">
+      <g transform="translate(122, 45)" style="pointer-events: none;">
         <circle cx="0" cy="0" r="26" fill="url(#metal-silver)" stroke="#475569" stroke-width="1.5" />
         <circle cx="0" cy="0" r="20" fill="#0f172a" />
         <circle cx="0" cy="0" r="10" fill="none" stroke="#64748b" stroke-width="1" />
         <text x="-4" y="4" fill="#fff" font-family="sans-serif" font-size="9" font-weight="bold">R</text>
       </g>
       <!-- Soundwave animation arc -->
-      <path id="${id}-ping" d="M 40 10 A 35 35 0 0 1 120 10" stroke="#38bdf8" stroke-width="2.5" fill="none" opacity="0" />
-      <text x="44" y="77" text-anchor="middle" fill="#f8fafc" font-family="monospace" font-size="7.5">VCC</text>
-      <text x="68" y="77" text-anchor="middle" fill="#f8fafc" font-family="monospace" font-size="7.5">TRIG</text>
-      <text x="94" y="77" text-anchor="middle" fill="#f8fafc" font-family="monospace" font-size="7.5">ECHO</text>
-      <text x="120" y="77" text-anchor="middle" fill="#f8fafc" font-family="monospace" font-size="7.5">GND</text>
+      <path id="${id}-ping" d="M 40 10 A 35 35 0 0 1 120 10" stroke="#38bdf8" stroke-width="2.5" fill="none" opacity="0" style="pointer-events: none;" />
+      <text x="44" y="77" text-anchor="middle" fill="#f8fafc" font-family="monospace" font-size="7.5" style="pointer-events: none;">VCC</text>
+      <text x="68" y="77" text-anchor="middle" fill="#f8fafc" font-family="monospace" font-size="7.5" style="pointer-events: none;">TRIG</text>
+      <text x="94" y="77" text-anchor="middle" fill="#f8fafc" font-family="monospace" font-size="7.5" style="pointer-events: none;">ECHO</text>
+      <text x="120" y="77" text-anchor="middle" fill="#f8fafc" font-family="monospace" font-size="7.5" style="pointer-events: none;">GND</text>
     `;
     this.layerComponents.appendChild(g);
 
@@ -382,15 +397,14 @@ class WorkbenchUI {
     g.setAttribute('transform', `translate(${x}, ${y})`);
     g.setAttribute('filter', 'url(#wire-shadow)');
     g.innerHTML = `
-      <circle cx="35" cy="35" r="30" fill="#0f172a" stroke="#334155" stroke-width="2" />
-      <circle id="${id}-bezel" cx="35" cy="35" r="18" fill="#1e293b" stroke="#475569" stroke-width="1.5" />
-      <circle cx="35" cy="35" r="5" fill="#000" />
-      <text x="25" y="22" fill="#ef4444" font-family="sans-serif" font-size="10" font-weight="bold">+</text>
-      <!-- Terminals -->
-      <line x1="20" y1="65" x2="20" y2="80" stroke="url(#metal-silver)" stroke-width="2.5" />
-      <line x1="50" y1="65" x2="50" y2="80" stroke="url(#metal-silver)" stroke-width="2.5" />
-      <text x="20" y="92" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7.5">POS(+)</text>
-      <text x="50" y="92" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7.5">NEG(-)</text>
+      <circle cx="35" cy="35" r="30" fill="#0f172a" stroke="#334155" stroke-width="2" style="pointer-events: none;" />
+      <circle id="${id}-bezel" cx="35" cy="35" r="18" fill="#1e293b" stroke="#475569" stroke-width="1.5" style="pointer-events: none;" />
+      <circle cx="35" cy="35" r="5" fill="#000" style="pointer-events: none;" />
+      <text x="25" y="22" fill="#ef4444" font-family="sans-serif" font-size="10" font-weight="bold" style="pointer-events: none;">+</text>
+      <line x1="20" y1="65" x2="20" y2="80" stroke="url(#metal-silver)" stroke-width="2.5" style="pointer-events: none;" />
+      <line x1="50" y1="65" x2="50" y2="80" stroke="url(#metal-silver)" stroke-width="2.5" style="pointer-events: none;" />
+      <text x="20" y="92" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7.5" style="pointer-events: none;">POS(+)</text>
+      <text x="50" y="92" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7.5" style="pointer-events: none;">NEG(-)</text>
     `;
     this.layerComponents.appendChild(g);
 
@@ -403,18 +417,16 @@ class WorkbenchUI {
     g.setAttribute('transform', `translate(${x}, ${y})`);
     g.setAttribute('filter', 'url(#wire-shadow)');
     g.innerHTML = `
-      <rect x="0" y="25" width="115" height="65" rx="5" fill="url(#servo-body)" stroke="#0284c7" stroke-width="1.5" />
-      <circle cx="32" cy="25" r="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
-      <!-- Servo Horn -->
-      <g id="${id}-horn" transform="translate(32, 25) rotate(0)">
+      <rect x="0" y="25" width="115" height="65" rx="5" fill="url(#servo-body)" stroke="#0284c7" stroke-width="1.5" style="pointer-events: none;" />
+      <circle cx="32" cy="25" r="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" style="pointer-events: none;" />
+      <g id="${id}-horn" transform="translate(32, 25) rotate(0)" style="pointer-events: none;">
         <path d="M -7, -5 L 50, -2 L 50, 2 L -7, 5 A 7 7 0 0 1 -7 -5 Z" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.2" />
         <circle cx="0" cy="0" r="4" fill="#475569" />
       </g>
-      <text x="32" y="70" fill="#fff" font-family="monospace" font-size="10" font-weight="bold">SG90 9g</text>
-      <!-- Wire leads -->
-      <text x="10" y="106" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7">GND</text>
-      <text x="26" y="106" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7">5V</text>
-      <text x="42" y="106" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7">SIG</text>
+      <text x="32" y="70" fill="#fff" font-family="monospace" font-size="10" font-weight="bold" style="pointer-events: none;">SG90 9g</text>
+      <text x="10" y="106" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7" style="pointer-events: none;">GND</text>
+      <text x="26" y="106" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7" style="pointer-events: none;">5V</text>
+      <text x="42" y="106" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7" style="pointer-events: none;">SIG</text>
     `;
     this.layerComponents.appendChild(g);
 
@@ -428,14 +440,13 @@ class WorkbenchUI {
     g.setAttribute('transform', `translate(${x}, ${y})`);
     g.setAttribute('filter', 'url(#wire-shadow)');
     g.innerHTML = `
-      <rect x="0" y="0" width="100" height="75" rx="6" fill="#15803d" stroke="#166534" stroke-width="1.5" />
-      <circle cx="50" cy="35" r="22" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
-      <!-- Fresnel pattern -->
-      <circle cx="50" cy="35" r="15" fill="none" stroke="#94a3b8" stroke-width="1" stroke-dasharray="2 2" />
-      <text x="18" y="15" fill="#dcfce7" font-family="monospace" font-size="8" font-weight="bold">HC-SR501 PIR</text>
-      <text x="25" y="70" text-anchor="middle" fill="#fff" font-family="monospace" font-size="7.5">VCC</text>
-      <text x="48" y="70" text-anchor="middle" fill="#fff" font-family="monospace" font-size="7.5">OUT</text>
-      <text x="72" y="70" text-anchor="middle" fill="#fff" font-family="monospace" font-size="7.5">GND</text>
+      <rect x="0" y="0" width="100" height="75" rx="6" fill="#15803d" stroke="#166534" stroke-width="1.5" style="pointer-events: none;" />
+      <circle cx="50" cy="35" r="22" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" style="pointer-events: none;" />
+      <circle cx="50" cy="35" r="15" fill="none" stroke="#94a3b8" stroke-width="1" stroke-dasharray="2 2" style="pointer-events: none;" />
+      <text x="18" y="15" fill="#dcfce7" font-family="monospace" font-size="8" font-weight="bold" style="pointer-events: none;">HC-SR501 PIR</text>
+      <text x="25" y="70" text-anchor="middle" fill="#fff" font-family="monospace" font-size="7.5" style="pointer-events: none;">VCC</text>
+      <text x="48" y="70" text-anchor="middle" fill="#fff" font-family="monospace" font-size="7.5" style="pointer-events: none;">OUT</text>
+      <text x="72" y="70" text-anchor="middle" fill="#fff" font-family="monospace" font-size="7.5" style="pointer-events: none;">GND</text>
     `;
     this.layerComponents.appendChild(g);
 
@@ -446,6 +457,7 @@ class WorkbenchUI {
 
   /**
    * Render interactive touch/click hitboxes for all registered pins
+   * Guaranteed painted click detection in all browsers!
    */
   renderPinTargets() {
     this.layerPins.innerHTML = '';
@@ -453,33 +465,50 @@ class WorkbenchUI {
     for (const [key, p] of this.pinRegistry.entries()) {
       const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       g.setAttribute('class', 'pin-target');
+      g.setAttribute('style', 'cursor: pointer; pointer-events: all;');
 
-      // 1. Invisible large hit target (easy clicking on tablet/mobile)
+      const isCurrentSelected = this.selectedPin && this.selectedPin.compId === p.compId && this.selectedPin.termId === p.termId;
+
+      // 1. Solid painted hit target with tiny opacity (100% reliably catches clicks in SVG!)
       const hit = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       hit.setAttribute('cx', p.x); hit.setAttribute('cy', p.y);
-      hit.setAttribute('r', '14'); hit.setAttribute('fill', 'transparent');
+      hit.setAttribute('r', '16');
+      hit.setAttribute('fill', '#ffffff');
+      hit.setAttribute('opacity', '0.001');
+      hit.setAttribute('pointer-events', 'all');
 
-      // 2. Glow effect on hover
+      // 2. Glow effect (always visible if selected, or on hover)
       const glow = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       glow.setAttribute('cx', p.x); glow.setAttribute('cy', p.y);
-      glow.setAttribute('r', '8'); glow.setAttribute('fill', '#facc15');
-      glow.setAttribute('opacity', '0'); glow.setAttribute('class', 'pin-glow');
+      glow.setAttribute('r', isCurrentSelected ? '12' : '8');
+      glow.setAttribute('fill', isCurrentSelected ? '#4ade80' : '#facc15');
+      glow.setAttribute('opacity', isCurrentSelected ? '0.85' : '0');
+      glow.setAttribute('class', 'pin-glow');
+      glow.setAttribute('pointer-events', 'none');
 
-      // 3. Visible pin core directly sitting in the socket hole
+      // 3. Visible pin core sitting directly in socket hole
       const core = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       core.setAttribute('cx', p.x); core.setAttribute('cy', p.y);
-      core.setAttribute('r', '3.8'); core.setAttribute('fill', '#0f172a');
-      core.setAttribute('stroke', '#fbbf24'); core.setAttribute('stroke-width', '1.5');
+      core.setAttribute('r', '4.5');
+      core.setAttribute('fill', isCurrentSelected ? '#4ade80' : '#0f172a');
+      core.setAttribute('stroke', isCurrentSelected ? '#ffffff' : '#fbbf24');
+      core.setAttribute('stroke-width', '1.8');
       core.setAttribute('class', 'pin-core');
+      core.setAttribute('pointer-events', 'none');
 
       g.appendChild(hit);
       g.appendChild(glow);
       g.appendChild(core);
 
       g.addEventListener('mouseenter', () => {
+        glow.setAttribute('opacity', isCurrentSelected ? '0.85' : '0.6');
+        glow.setAttribute('r', '12');
         if (this.onPinHover) this.onPinHover(p, `Pin: ${p.name}`);
       });
+
       g.addEventListener('mouseleave', () => {
+        glow.setAttribute('opacity', isCurrentSelected ? '0.85' : '0');
+        glow.setAttribute('r', isCurrentSelected ? '12' : '8');
         if (this.onPinHover && !this.selectedPin) this.onPinHover(null);
       });
 
@@ -494,29 +523,46 @@ class WorkbenchUI {
 
   handlePinClick(pin) {
     if (!this.selectedPin) {
-      // Start wire
+      // 1. Select First Pin
       this.selectedPin = pin;
       this.activeWirePath.setAttribute('opacity', '1');
-      if (this.onPinHover) this.onPinHover(pin, `Tarik kabel dari ${pin.name} -> Klik pin tujuan`);
-    } else {
-      // End wire
-      if (this.selectedPin.compId !== pin.compId || this.selectedPin.termId !== pin.termId) {
-        const color = this.pickWireColor(this.selectedPin.termId, pin.termId);
-        const res = this.circuit.addConnection(
-          this.selectedPin.compId, this.selectedPin.termId,
-          pin.compId, pin.termId,
-          color
-        );
-        if (res.success) {
-          this.renderWires();
-          if (this.onConnectionChange) this.onConnectionChange();
-          if (this.onPinHover) this.onPinHover(null, `Tersambung: ${this.selectedPin.name} ↔ ${pin.name}`);
-        } else {
-          if (this.onPinHover) this.onPinHover(null, `Error: ${res.error}`);
-        }
+      this.renderPinTargets(); // updates glow to green
+      if (this.onPinHover) {
+        this.onPinHover(pin, `🔵 <strong>${pin.name}</strong> terpilih! Sekarang klik pin tujuan.`);
       }
+    } else {
+      // 2. Connect to Second Pin
+      const p1 = this.selectedPin;
+      const p2 = pin;
+
+      if (p1.compId === p2.compId && p1.termId === p2.termId) {
+        // Clicked same pin twice -> cancel
+        this.cancelActiveWire();
+        return;
+      }
+
+      const color = this.pickWireColor(p1.termId, p2.termId);
+      const res = this.circuit.addConnection(
+        p1.compId, p1.termId,
+        p2.compId, p2.termId,
+        color
+      );
+
       this.selectedPin = null;
       this.activeWirePath.setAttribute('opacity', '0');
+      this.renderPinTargets();
+
+      if (res.success) {
+        this.renderWires();
+        if (this.onConnectionChange) this.onConnectionChange();
+        if (this.onPinHover) {
+          this.onPinHover(null, `✅ Kabel tersambung: <strong>${p1.name}</strong> ↔ <strong>${p2.name}</strong>`);
+        }
+      } else {
+        if (this.onPinHover) {
+          this.onPinHover(null, `⚠️ ${res.error}`);
+        }
+      }
     }
   }
 
@@ -531,7 +577,7 @@ class WorkbenchUI {
 
       const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       g.setAttribute('filter', 'url(#wire-shadow)');
-      g.setAttribute('style', 'cursor: pointer;');
+      g.setAttribute('style', 'cursor: pointer; pointer-events: all;');
 
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       path.setAttribute('d', this.makeBezierPath(srcPin.x, srcPin.y, tgtPin.x, tgtPin.y));

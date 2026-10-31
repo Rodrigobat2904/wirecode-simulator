@@ -85,6 +85,9 @@
         <div class="card-title">
           <span>2D Circuit Workbench (Arduino Uno R3)</span>
           <div style="display: flex; gap: 8px;">
+            <button id="btn-autowire" style="padding: 4px 10px; font-size: 0.75rem; background: #0369a1; border-color: #38bdf8;">
+              🔌 Pasang Kabel Otomatis (Solusi)
+            </button>
             <button id="btn-clear-wires" class="btn-danger" style="padding: 4px 10px; font-size: 0.75rem;">
               🗑️ Reset Kabel
             </button>
@@ -100,7 +103,7 @@
         <!-- Status & Tooltip Banner -->
         <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; padding: 4px 6px; color: var(--text-muted);">
           <span id="hover-info">Arahkan kursor atau klik pin emas untuk mulai merangkai kabel.</span>
-          <span style="font-size: 0.75rem; color: #64748b;">Klik kabel yang sudah terpasang untuk menghapusnya</span>
+          <span style="font-size: 0.75rem; color: #64748b;">Klik kabel untuk menghapus | Tekan ESC untuk batal tarik kabel</span>
         </div>
 
         <!-- Interactive Simulation Controls Area -->

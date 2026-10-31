@@ -72,12 +72,22 @@ class WireCodeApp {
       this.logConsole('Simulation stopped by user.');
     });
 
+    // Auto-Wire / Solution button
+    const btnAutoWire = document.getElementById('btn-autowire');
+    if (btnAutoWire) {
+      btnAutoWire.addEventListener('click', () => {
+        this.handleAutoWire();
+      });
+    }
+
     // Reset Wires button
     document.getElementById('btn-clear-wires').addEventListener('click', () => {
       if (confirm('Bersihkan semua sambungan kabel pada mission ini?')) {
         this.circuit.clearConnections();
         this.workbench.renderWires();
         this.simEngine.stop();
+        this.simStatusBadge.innerText = 'STATUS: CIRCUIT INCOMPLETE';
+        this.simStatusBadge.className = 'status-badge unverified';
         this.logConsole('Semua kabel dibersihkan.');
       }
     });
@@ -109,7 +119,7 @@ class WireCodeApp {
     this.simStatusBadge.innerText = 'STATUS: CIRCUIT INCOMPLETE';
     this.simStatusBadge.className = 'status-badge unverified';
 
-    this.logConsole(`[MISSION LOADED] Misi ${mission.number}: ${mission.title}\nBaca instruksi kodingan di kiri, lalu rangkai kabel pada komponen di kanan.`);
+    this.logConsole(`[MISSION LOADED] Misi ${mission.number}: ${mission.title}\nBaca kodingan di kiri, hubungkan kabel pin fisik di kanan, lalu klik "⚡ Verify & Flash".`);
     this.renderSimControls(this.simEngine.state);
   }
 
@@ -140,6 +150,37 @@ class WireCodeApp {
       this.simStatusBadge.className = 'status-badge unverified';
       this.logConsole('[NOTICE] Wiring changed. Tekan "⚡ Flash & Run" untuk memverifikasi ulang.');
     }
+  }
+
+  handleAutoWire() {
+    this.circuit.clearConnections();
+    const mission = MISSIONS[this.currentMissionIdx];
+
+    if (mission.id === 'mission_01') {
+      this.circuit.addConnection('arduino', 'D5', 'res1', 'T1', '#38bdf8');
+      this.circuit.addConnection('res1', 'T2', 'led1', 'anode', '#38bdf8');
+      this.circuit.addConnection('led1', 'cathode', 'arduino', 'GND_1', '#1e293b');
+      this.circuit.addConnection('btn1', 'T1', 'arduino', 'D2', '#eab308');
+      this.circuit.addConnection('btn1', 'T2', 'arduino', 'GND_2', '#1e293b');
+    } else if (mission.id === 'mission_02') {
+      this.circuit.addConnection('sonar1', 'VCC', 'arduino', '5V', '#dc2626');
+      this.circuit.addConnection('sonar1', 'GND', 'arduino', 'GND_1', '#1e293b');
+      this.circuit.addConnection('sonar1', 'TRIG', 'arduino', 'D9', '#0284c7');
+      this.circuit.addConnection('sonar1', 'ECHO', 'arduino', 'D8', '#9333ea');
+      this.circuit.addConnection('buzzer1', 'positive', 'arduino', 'D6', '#ea580c');
+      this.circuit.addConnection('buzzer1', 'negative', 'arduino', 'GND_2', '#1e293b');
+    } else if (mission.id === 'mission_03') {
+      this.circuit.addConnection('pir1', 'VCC', 'arduino', '5V', '#dc2626');
+      this.circuit.addConnection('pir1', 'GND', 'arduino', 'GND_1', '#1e293b');
+      this.circuit.addConnection('pir1', 'OUT', 'arduino', 'D3', '#0284c7');
+      this.circuit.addConnection('servo1', 'power', 'arduino', '5V', '#dc2626');
+      this.circuit.addConnection('servo1', 'ground', 'arduino', 'GND_2', '#1e293b');
+      this.circuit.addConnection('servo1', 'signal', 'arduino', 'D10', '#ea580c');
+    }
+
+    this.workbench.renderWires();
+    this.logConsole('🔌 [AUTO-WIRE] Seluruh kabel terpasang dengan benar! Sekarang klik "⚡ Verify & Flash" untuk menjalankan simulasi.');
+    this.hoverInfo.innerHTML = '✅ Kabel otomatis terpasang! Tekan <strong>⚡ Verify & Flash</strong>.';
   }
 
   handleFlashFirmware() {
@@ -187,7 +228,7 @@ class WireCodeApp {
     let html = '';
 
     if (!this.simEngine.isRunning) {
-      html = `<div style="font-size: 0.8rem; color: #64748b;">Simulasi belum aktif. Lengkapi wiring dan tekan <strong>⚡ Flash & Run</strong>.</div>`;
+      html = `<div style="font-size: 0.8rem; color: #64748b;">Simulasi belum aktif. Lengkapi wiring dan tekan <strong>⚡ Verify & Flash Firmware</strong> (atau gunakan tombol <em>Pasang Kabel Otomatis</em> di atas).</div>`;
     } else if (mission.id === 'mission_01') {
       html = `
         <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
@@ -201,7 +242,7 @@ class WireCodeApp {
             🔘 Tahan Tombol (Press Button)
           </button>
           <span style="font-size: 0.8rem; color: ${state.buttonPressed ? '#4ade80' : '#94a3b8'};">
-            Status: ${state.buttonPressed ? 'LOW (Pressed) → LED NYALA!' : 'HIGH (Released) → LED MATI'}
+            Status: ${state.buttonPressed ? 'LOW (Pressed) → LED NYALA MERAH!' : 'HIGH (Released) → LED MATI'}
           </span>
         </div>
       `;
