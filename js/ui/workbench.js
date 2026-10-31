@@ -95,9 +95,76 @@ class WorkbenchUI {
   }
 
   /**
-   * Render Arduino Uno R3 with exact physical pin coordinates
+   * Render Arduino Uno R3 with exact physical pin coordinates and individually centered labels
    */
   renderArduino(x = 50, y = 70) {
+    const pitch = 11.5;
+    const yTopPin = y + 15;
+    const yTopLabel = y + 36;
+    const yBottomPin = y + 215;
+    const yBottomLabel = y + 198;
+
+    // Top Header: 8 pins left + gap + 8 pins right
+    const topPins = [
+      { id: 'AREF',    x: x + 104 + 0 * pitch, y: yTopPin, label: 'REF' },
+      { id: 'GND_DIG', x: x + 104 + 1 * pitch, y: yTopPin, label: 'GND' },
+      { id: 'D13',     x: x + 104 + 2 * pitch, y: yTopPin, label: '13' },
+      { id: 'D12',     x: x + 104 + 3 * pitch, y: yTopPin, label: '12' },
+      { id: 'D11',     x: x + 104 + 4 * pitch, y: yTopPin, label: '~11' },
+      { id: 'D10',     x: x + 104 + 5 * pitch, y: yTopPin, label: '~10' },
+      { id: 'D9',      x: x + 104 + 6 * pitch, y: yTopPin, label: '~9' },
+      { id: 'D8',      x: x + 104 + 7 * pitch, y: yTopPin, label: '8' },
+      // Gap of 6px between the two headers
+      { id: 'D7',      x: x + 202 + 0 * pitch, y: yTopPin, label: '7' },
+      { id: 'D6',      x: x + 202 + 1 * pitch, y: yTopPin, label: '~6' },
+      { id: 'D5',      x: x + 202 + 2 * pitch, y: yTopPin, label: '~5' },
+      { id: 'D4',      x: x + 202 + 3 * pitch, y: yTopPin, label: '4' },
+      { id: 'D3',      x: x + 202 + 4 * pitch, y: yTopPin, label: '~3' },
+      { id: 'D2',      x: x + 202 + 5 * pitch, y: yTopPin, label: '2' },
+      { id: 'D1',      x: x + 202 + 6 * pitch, y: yTopPin, label: 'TX' },
+      { id: 'D0',      x: x + 202 + 7 * pitch, y: yTopPin, label: 'RX' },
+    ];
+
+    // Bottom Power: 7 pins
+    const bottomPowerPins = [
+      { id: 'IOREF', x: x + 104 + 0 * pitch, y: yBottomPin, label: 'IO' },
+      { id: 'RESET', x: x + 104 + 1 * pitch, y: yBottomPin, label: 'RST' },
+      { id: '3V3',   x: x + 104 + 2 * pitch, y: yBottomPin, label: '3V3' },
+      { id: '5V',    x: x + 104 + 3 * pitch, y: yBottomPin, label: '5V' },
+      { id: 'GND_1', x: x + 104 + 4 * pitch, y: yBottomPin, label: 'GND' },
+      { id: 'GND_2', x: x + 104 + 5 * pitch, y: yBottomPin, label: 'GND' },
+      { id: 'VIN',   x: x + 104 + 6 * pitch, y: yBottomPin, label: 'VIN' },
+    ];
+
+    // Bottom Analog: 6 pins
+    const bottomAnalogPins = [
+      { id: 'A0', x: x + 202 + 0 * pitch, y: yBottomPin, label: 'A0' },
+      { id: 'A1', x: x + 202 + 1 * pitch, y: yBottomPin, label: 'A1' },
+      { id: 'A2', x: x + 202 + 2 * pitch, y: yBottomPin, label: 'A2' },
+      { id: 'A3', x: x + 202 + 3 * pitch, y: yBottomPin, label: 'A3' },
+      { id: 'A4', x: x + 202 + 4 * pitch, y: yBottomPin, label: 'A4' },
+      { id: 'A5', x: x + 202 + 5 * pitch, y: yBottomPin, label: 'A5' },
+    ];
+
+    // Generate individual centered SVG text labels
+    let topLabelsSvg = '';
+    topPins.forEach(p => {
+      const isPwm = p.label.startsWith('~');
+      const color = isPwm ? '#38bdf8' : (p.label === 'REF' || p.label === 'GND' ? '#94a3b8' : '#f8fafc');
+      topLabelsSvg += `<text x="${p.x}" y="${yTopLabel}" text-anchor="middle" font-family="monospace" font-size="7.5" font-weight="bold" fill="${color}">${p.label}</text>`;
+    });
+
+    let bottomPowerLabelsSvg = '';
+    bottomPowerPins.forEach(p => {
+      const color = p.label.includes('5V') || p.label.includes('3V') ? '#ef4444' : (p.label.includes('GND') ? '#94a3b8' : '#f8fafc');
+      bottomPowerLabelsSvg += `<text x="${p.x}" y="${yBottomLabel}" text-anchor="middle" font-family="monospace" font-size="7.5" font-weight="bold" fill="${color}">${p.label}</text>`;
+    });
+
+    let bottomAnalogLabelsSvg = '';
+    bottomAnalogPins.forEach(p => {
+      bottomAnalogLabelsSvg += `<text x="${p.x}" y="${yBottomLabel}" text-anchor="middle" font-family="monospace" font-size="7.5" font-weight="bold" fill="#38bdf8">${p.label}</text>`;
+    });
+
     this.layerBoard.innerHTML = `
       <g id="arduino-uno-group" transform="translate(${x}, ${y})" filter="url(#wire-shadow)">
         <!-- Main PCB -->
@@ -137,58 +204,24 @@ class WorkbenchUI {
         <rect x="110" y="70" width="6" height="4" fill="#78350f" id="board-led-l" />
         <text x="111" y="82" fill="rgba(255,255,255,0.6)" font-family="sans-serif" font-size="6">L</text>
 
-        <!-- Top Header Plastic Housing -->
-        <rect x="100" y="6" width="198" height="18" fill="#111827" stroke="#374151" stroke-width="1" rx="2" />
-        <text x="105" y="32" fill="#cbd5e1" font-family="monospace" font-size="7">AREF GND 13 12 11 ~10 ~9  8  7 ~6 ~5  4 ~3  2 TX RX</text>
+        <!-- Top Header Female Plastic Housings (2 strips separated by small physical gap) -->
+        <rect x="98" y="6" width="98" height="18" fill="#111827" stroke="#374151" stroke-width="1" rx="2" />
+        <rect x="196" y="6" width="98" height="18" fill="#111827" stroke="#374151" stroke-width="1" rx="2" />
 
-        <!-- Bottom Header 1: Power -->
-        <rect x="100" y="206" width="90" height="18" fill="#111827" stroke="#374151" stroke-width="1" rx="2" />
-        <text x="105" y="200" fill="#cbd5e1" font-family="monospace" font-size="7">IO RST 3V 5V G1 G2 VIN</text>
+        <!-- Bottom Header 1: Power Plastic Housing -->
+        <rect x="98" y="206" width="87" height="18" fill="#111827" stroke="#374151" stroke-width="1" rx="2" />
 
-        <!-- Bottom Header 2: Analog In -->
-        <rect x="205" y="206" width="85" height="18" fill="#111827" stroke="#374151" stroke-width="1" rx="2" />
-        <text x="215" y="200" fill="#cbd5e1" font-family="monospace" font-size="7">A0 A1 A2 A3 A4 A5</text>
+        <!-- Bottom Header 2: Analog Plastic Housing -->
+        <rect x="196" y="206" width="76" height="18" fill="#111827" stroke="#374151" stroke-width="1" rx="2" />
+      </g>
+
+      <!-- Centered Pin Labels Directly Aligned with each pin hole -->
+      <g id="arduino-pin-labels">
+        ${topLabelsSvg}
+        ${bottomPowerLabelsSvg}
+        ${bottomAnalogLabelsSvg}
       </g>
     `;
-
-    // Map Arduino physical pin coordinates
-    const topPins = [
-      { id: 'AREF', x: x + 112, y: y + 15 },
-      { id: 'GND_DIG', x: x + 124, y: y + 15 },
-      { id: 'D13', x: x + 136, y: y + 15 },
-      { id: 'D12', x: x + 148, y: y + 15 },
-      { id: 'D11', x: x + 160, y: y + 15 },
-      { id: 'D10', x: x + 172, y: y + 15 },
-      { id: 'D9',  x: x + 184, y: y + 15 },
-      { id: 'D8',  x: x + 196, y: y + 15 },
-      { id: 'D7',  x: x + 215, y: y + 15 },
-      { id: 'D6',  x: x + 227, y: y + 15 },
-      { id: 'D5',  x: x + 239, y: y + 15 },
-      { id: 'D4',  x: x + 251, y: y + 15 },
-      { id: 'D3',  x: x + 263, y: y + 15 },
-      { id: 'D2',  x: x + 275, y: y + 15 },
-      { id: 'D1',  x: x + 287, y: y + 15 },
-      { id: 'D0',  x: x + 299, y: y + 15 },
-    ];
-
-    const bottomPowerPins = [
-      { id: 'IOREF', x: x + 108, y: y + 215 },
-      { id: 'RESET', x: x + 120, y: y + 215 },
-      { id: '3V3',   x: x + 132, y: y + 215 },
-      { id: '5V',    x: x + 144, y: y + 215 },
-      { id: 'GND_1', x: x + 156, y: y + 215 },
-      { id: 'GND_2', x: x + 168, y: y + 215 },
-      { id: 'VIN',   x: x + 180, y: y + 215 },
-    ];
-
-    const bottomAnalogPins = [
-      { id: 'A0', x: x + 215, y: y + 215 },
-      { id: 'A1', x: x + 227, y: y + 215 },
-      { id: 'A2', x: x + 239, y: y + 215 },
-      { id: 'A3', x: x + 251, y: y + 215 },
-      { id: 'A4', x: x + 263, y: y + 215 },
-      { id: 'A5', x: x + 275, y: y + 215 },
-    ];
 
     [...topPins, ...bottomPowerPins, ...bottomAnalogPins].forEach(p => {
       this.registerPin('arduino', p.id, p.x, p.y, `Arduino ${p.id}`, ARDUINO_UNO_R3.pins[p.id]);
@@ -253,8 +286,8 @@ class WorkbenchUI {
       <path d="M 25 45 L 25 65 L 20 75 L 20 100" stroke="url(#metal-silver)" stroke-width="2.5" fill="none" />
       <!-- Cathode Leg (Short) -->
       <path d="M 35 45 L 35 100" stroke="url(#metal-silver)" stroke-width="2.5" fill="none" />
-      <text x="6" y="112" fill="#94a3b8" font-family="monospace" font-size="7.5">ANODE(+)</text>
-      <text x="35" y="112" fill="#94a3b8" font-family="monospace" font-size="7.5">CATHODE(-)</text>
+      <text x="20" y="112" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7.5">ANODE(+)</text>
+      <text x="40" y="112" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7.5">CATHODE(-)</text>
     `;
     this.layerComponents.appendChild(g);
 
@@ -274,7 +307,7 @@ class WorkbenchUI {
       <rect x="0" y="54" width="20" height="3" fill="#dc2626" />
       <rect x="0" y="62" width="20" height="3" fill="#78350f" />
       <rect x="0" y="71" width="20" height="2.5" fill="#eab308" />
-      <text x="-4" y="32" fill="#e2e8f0" font-family="monospace" font-size="8.5" font-weight="bold">220Ω</text>
+      <text x="10" y="32" text-anchor="middle" fill="#e2e8f0" font-family="monospace" font-size="8.5" font-weight="bold">220Ω</text>
     `;
     this.layerComponents.appendChild(g);
 
@@ -291,22 +324,21 @@ class WorkbenchUI {
       <circle id="${id}-plunger" cx="27.5" cy="27.5" r="16" fill="#0f172a" stroke="#64748b" stroke-width="1.5" style="cursor: pointer; transition: 0.1s;" />
       <circle cx="27.5" cy="27.5" r="12" fill="#3b82f6" />
       <!-- Metal Pins -->
-      <line x1="8" y1="55" x2="8" y2="70" stroke="url(#metal-silver)" stroke-width="3" />
-      <line x1="47" y1="55" x2="47" y2="70" stroke="url(#metal-silver)" stroke-width="3" />
-      <text x="12" y="82" fill="#94a3b8" font-family="monospace" font-size="7.5">T1</text>
-      <text x="44" y="82" fill="#94a3b8" font-family="monospace" font-size="7.5">T2</text>
+      <line x1="10" y1="55" x2="10" y2="70" stroke="url(#metal-silver)" stroke-width="3" />
+      <line x1="45" y1="55" x2="45" y2="70" stroke="url(#metal-silver)" stroke-width="3" />
+      <text x="10" y="82" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7.5">T1</text>
+      <text x="45" y="82" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7.5">T2</text>
     `;
     this.layerComponents.appendChild(g);
 
-    // Interactive button press on plunger
     const plunger = g.querySelector(`#${id}-plunger`);
     plunger.addEventListener('mousedown', () => window.app && window.app.simEngine.setButtonState(true));
     plunger.addEventListener('mouseup', () => window.app && window.app.simEngine.setButtonState(false));
     plunger.addEventListener('touchstart', () => window.app && window.app.simEngine.setButtonState(true));
     plunger.addEventListener('touchend', () => window.app && window.app.simEngine.setButtonState(false));
 
-    this.registerPin(id, 'T1', x + 8, y + 70, 'Pushbutton Terminal A');
-    this.registerPin(id, 'T2', x + 47, y + 70, 'Pushbutton Terminal B');
+    this.registerPin(id, 'T1', x + 10, y + 70, 'Pushbutton Terminal A');
+    this.registerPin(id, 'T2', x + 45, y + 70, 'Pushbutton Terminal B');
   }
 
   renderUltrasonic(id, x, y) {
@@ -315,7 +347,7 @@ class WorkbenchUI {
     g.setAttribute('filter', 'url(#wire-shadow)');
     g.innerHTML = `
       <rect x="0" y="0" width="160" height="85" rx="8" fill="#1d4ed8" stroke="#1e40af" stroke-width="1.5" />
-      <text x="45" y="16" fill="rgba(255,255,255,0.7)" font-family="monospace" font-size="9" font-weight="bold">HC-SR04</text>
+      <text x="50" y="16" fill="rgba(255,255,255,0.7)" font-family="monospace" font-size="9" font-weight="bold">HC-SR04</text>
       <!-- Transducer T -->
       <g transform="translate(38, 45)">
         <circle cx="0" cy="0" r="26" fill="url(#metal-silver)" stroke="#475569" stroke-width="1.5" />
@@ -332,7 +364,10 @@ class WorkbenchUI {
       </g>
       <!-- Soundwave animation arc -->
       <path id="${id}-ping" d="M 40 10 A 35 35 0 0 1 120 10" stroke="#38bdf8" stroke-width="2.5" fill="none" opacity="0" />
-      <text x="35" y="80" fill="#f8fafc" font-family="monospace" font-size="7.5">VCC TRIG ECHO GND</text>
+      <text x="44" y="77" text-anchor="middle" fill="#f8fafc" font-family="monospace" font-size="7.5">VCC</text>
+      <text x="68" y="77" text-anchor="middle" fill="#f8fafc" font-family="monospace" font-size="7.5">TRIG</text>
+      <text x="94" y="77" text-anchor="middle" fill="#f8fafc" font-family="monospace" font-size="7.5">ECHO</text>
+      <text x="120" y="77" text-anchor="middle" fill="#f8fafc" font-family="monospace" font-size="7.5">GND</text>
     `;
     this.layerComponents.appendChild(g);
 
@@ -354,8 +389,8 @@ class WorkbenchUI {
       <!-- Terminals -->
       <line x1="20" y1="65" x2="20" y2="80" stroke="url(#metal-silver)" stroke-width="2.5" />
       <line x1="50" y1="65" x2="50" y2="80" stroke="url(#metal-silver)" stroke-width="2.5" />
-      <text x="14" y="92" fill="#94a3b8" font-family="monospace" font-size="7.5">POS(+)</text>
-      <text x="44" y="92" fill="#94a3b8" font-family="monospace" font-size="7.5">NEG(-)</text>
+      <text x="20" y="92" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7.5">POS(+)</text>
+      <text x="50" y="92" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7.5">NEG(-)</text>
     `;
     this.layerComponents.appendChild(g);
 
@@ -377,7 +412,9 @@ class WorkbenchUI {
       </g>
       <text x="32" y="70" fill="#fff" font-family="monospace" font-size="10" font-weight="bold">SG90 9g</text>
       <!-- Wire leads -->
-      <text x="2" y="105" fill="#94a3b8" font-family="monospace" font-size="7">GND 5V SIG</text>
+      <text x="10" y="106" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7">GND</text>
+      <text x="26" y="106" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7">5V</text>
+      <text x="42" y="106" text-anchor="middle" fill="#94a3b8" font-family="monospace" font-size="7">SIG</text>
     `;
     this.layerComponents.appendChild(g);
 
@@ -396,7 +433,9 @@ class WorkbenchUI {
       <!-- Fresnel pattern -->
       <circle cx="50" cy="35" r="15" fill="none" stroke="#94a3b8" stroke-width="1" stroke-dasharray="2 2" />
       <text x="18" y="15" fill="#dcfce7" font-family="monospace" font-size="8" font-weight="bold">HC-SR501 PIR</text>
-      <text x="18" y="70" fill="#fff" font-family="monospace" font-size="7.5">VCC OUT GND</text>
+      <text x="25" y="70" text-anchor="middle" fill="#fff" font-family="monospace" font-size="7.5">VCC</text>
+      <text x="48" y="70" text-anchor="middle" fill="#fff" font-family="monospace" font-size="7.5">OUT</text>
+      <text x="72" y="70" text-anchor="middle" fill="#fff" font-family="monospace" font-size="7.5">GND</text>
     `;
     this.layerComponents.appendChild(g);
 
@@ -420,16 +459,16 @@ class WorkbenchUI {
       hit.setAttribute('cx', p.x); hit.setAttribute('cy', p.y);
       hit.setAttribute('r', '14'); hit.setAttribute('fill', 'transparent');
 
-      // 2. Glow effect
+      // 2. Glow effect on hover
       const glow = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       glow.setAttribute('cx', p.x); glow.setAttribute('cy', p.y);
       glow.setAttribute('r', '8'); glow.setAttribute('fill', '#facc15');
       glow.setAttribute('opacity', '0'); glow.setAttribute('class', 'pin-glow');
 
-      // 3. Visible pin core
+      // 3. Visible pin core directly sitting in the socket hole
       const core = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       core.setAttribute('cx', p.x); core.setAttribute('cy', p.y);
-      core.setAttribute('r', '4'); core.setAttribute('fill', '#0f172a');
+      core.setAttribute('r', '3.8'); core.setAttribute('fill', '#0f172a');
       core.setAttribute('stroke', '#fbbf24'); core.setAttribute('stroke-width', '1.5');
       core.setAttribute('class', 'pin-core');
 
@@ -513,11 +552,11 @@ class WorkbenchUI {
 
       // Terminal DuPont caps
       const c1 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      c1.setAttribute('cx', srcPin.x); c1.setAttribute('cy', srcPin.y); c1.setAttribute('r', '5');
+      c1.setAttribute('cx', srcPin.x); c1.setAttribute('cy', srcPin.y); c1.setAttribute('r', '4.5');
       c1.setAttribute('fill', '#0f172a'); c1.setAttribute('stroke', conn.color); c1.setAttribute('stroke-width', '1.5');
 
       const c2 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      c2.setAttribute('cx', tgtPin.x); c2.setAttribute('cy', tgtPin.y); c2.setAttribute('r', '5');
+      c2.setAttribute('cx', tgtPin.x); c2.setAttribute('cy', tgtPin.y); c2.setAttribute('r', '4.5');
       c2.setAttribute('fill', '#0f172a'); c2.setAttribute('stroke', conn.color); c2.setAttribute('stroke-width', '1.5');
 
       g.appendChild(path);
